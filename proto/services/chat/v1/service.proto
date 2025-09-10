@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package services.chat.v1;
+
+import "google/api/annotations.proto";
+import "services/chat/v1/types.proto";
+
+service ChatService {
+  // Enviar mensaje
+  // 🔒 Need private token to access this endpoint
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/send"
+      body: "*"
+    };
+  }
+
+  // Editar mensaje existente
+  // 🔒 Need private token to access this endpoint
+  rpc EditMessage(EditMessageRequest) returns (EditMessageResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/edit"
+      body: "*"
+    };
+  }
+
+  // Eliminar mensaje
+  // 🔒 Need private token to access this endpoint
+  rpc DeleteMessage(DeleteMessageRequest) returns (DeleteMessageResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/delete"
+      body: "*"
+    };
+  }
+
+  // Reaccionar a un mensaje
+  // 🔒 Need private token to access this endpoint
+  rpc ReactToMessage(ReactToMessageRequest) returns (ReactToMessageResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/react"
+      body: "*"
+    };
+  }
+
+  // Obtener lista de rooms del usuario
+  // 🔒 Need private token to access this endpoint
+  rpc GetRooms(GetRoomsRequest) returns (GetRoomsResponse) {
+    option (google.api.http) = {get: "/api/chat/v1/room/list"};
+  }
+
+  // Crear un nuevo room
+  // 🔒 Need private token to access this endpoint
+  rpc CreateRoom(CreateRoomRequest) returns (CreateRoomResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/room/create"
+      body: "*"
+    };
+  }
+
+  // Obtener un room
+  // 🔒 Need private token to access this endpoint
+  rpc GetRoom(GetRoomRequest) returns (GetRoomResponse) {
+    option (google.api.http) = {get: "/api/chat/v1/room/{id}"};
+  }
+
+  // Obtener historial de mensajes de un room
+  // 🔒 Need private token to access this endpoint
+  rpc GetMessageHistory(GetMessageHistoryRequest) returns (GetMessageHistoryResponse) {
+    option (google.api.http) = {get: "/api/chat/v1/history/{id}"};
+  }
+
+  // Obtener lista de participantes de un room
+  // 🔒 Need private token to access this endpoint
+  rpc GetRoomParticipants(GetRoomParticipantsRequest) returns (GetRoomParticipantsResponse) {
+    option (google.api.http) = {get: "/api/chat/v1/room/{id}/participants"};
+  }
+
+  // Pinnear un room
+  // 🔒 Need private token to access this endpoint
+  rpc PinRoom(PinRoomRequest) returns (PinRoomResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/room/pin"
+      body: "*"
+    };
+  }
+
+  // Mutear un room
+  // 🔒 Need private token to access this endpoint
+  rpc MuteRoom(MuteRoomRequest) returns (MuteRoomResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/room/mute"
+      body: "*"
+    };
+  }
+
+  // Salir o sacar a alguien de un room
+  // 🔒 Need private token to access this endpoint
+  rpc LeaveRoom(LeaveRoomRequest) returns (LeaveRoomResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/room/leave"
+      body: "*"
+    };
+  }
+
+  // Agregar un participante a un room
+  // 🔒 Need private token to access this endpoint
+  rpc AddParticipantToRoom(AddParticipantToRoomRequest) returns (AddParticipantToRoomResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/room/participant/add"
+      body: "*"
+    };
+  }
+
+  // Actualizar un room
+  // 🔒 Need private token to access this endpoint
+  rpc UpdateRoom(UpdateRoomRequest) returns (UpdateRoomResponse) {
+    option (google.api.http) = {
+      put: "/api/chat/v1/room/update"
+      body: "*"
+    };
+  }
+
+  // Modificar role
+  // 🔒 Need private token to access this endpoint
+  rpc UpdateParticipantRoom(UpdateParticipantRoomRequest) returns (UpdateParticipantRoomResponse) {
+    option (google.api.http) = {
+      put: "/api/chat/v1/room/participant/update"
+      body: "*"
+    };
+  }
+
+  // Bloqueo de usuario
+  // 🔒 Need private token to access this endpoint
+  rpc BlockUser(BlockUserRequest) returns (BlockUserResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/room/block"
+      body: "*"
+    };
+  }
+
+  // Obtener mensaje por sender message
+  // 🔒 Need private token to access this endpoint
+  rpc GetSenderMessage(GetSenderMessageRequest) returns (GetSenderMessageResponse) {
+    option (google.api.http) = {get: "/api/chat/v1/sender/message/{sender_message_id}"};
+  }
+
+  // Obtener mensaje
+  // 🔒 Need private token to access this endpoint
+  rpc GetMessage(GetMessageRequest) returns (MessageData) {
+    option (google.api.http) = {get: "/api/chat/v1/message/{id}"};
+  }
+
+  // Obtener lecturas de un mensaje por usuario
+  // 🔒 Need private token to access this endpoint
+  rpc GetMessageRead(GetMessageReadRequest) returns (GetMessageReadResponse) {
+    option (google.api.http) = {get: "/api/chat/v1/message/{id}/read"};
+  }
+
+  // Obtener mentions de un mensaje por usuario
+  // 🔒 Need private token to access this endpoint
+  rpc GetMessageReactions(GetMessageReactionsRequest) returns (GetMessageReactionsResponse) {
+    option (google.api.http) = {get: "/api/chat/v1/message/{id}/reactions"};
+  }
+
+  // Marcar mensajes como leídos
+  // 🔒 Need private token to access this endpoint
+  rpc MarkMessagesAsRead(MarkMessagesAsReadRequest) returns (MarkMessagesAsReadResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/mark_as_read"
+      body: "*"
+    };
+  }
+
+  // Sincronización inicial completa
+  // 🔒 Need private token to access this endpoint
+  rpc InitialSync(InitialSyncRequest) returns (InitialSyncResponse) {
+    option (google.api.http) = {
+      post: "/api/chat/v1/sync"
+      body: "*"
+    };
+  }
+
+  // Stream unidireccional para mensajes en tiempo real
+  // 🔒 Need private token to access this endpoint
+  rpc StreamMessages(StreamMessagesRequest) returns (stream MessageEvent) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}

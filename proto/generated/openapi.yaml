@@ -1,0 +1,1093 @@
+# Generated with protoc-gen-openapi
+# https://github.com/google/gnostic/tree/master/cmd/protoc-gen-openapi
+
+openapi: 3.0.3
+info:
+    title: ChatMessages API
+    version: "3"
+paths:
+    /api/chat/v1/delete:
+        post:
+            tags:
+                - ChatService
+            description: "Eliminar mensaje\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_DeleteMessage
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/DeleteMessageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DeleteMessageResponse'
+    /api/chat/v1/edit:
+        post:
+            tags:
+                - ChatService
+            description: "Editar mensaje existente\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_EditMessage
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/EditMessageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/EditMessageResponse'
+    /api/chat/v1/history/{id}:
+        get:
+            tags:
+                - ChatService
+            description: "Obtener historial de mensajes de un room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_GetMessageHistory
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: beforeMessageId
+                  in: query
+                  schema:
+                    type: string
+                - name: beforeDate
+                  in: query
+                  schema:
+                    type: string
+                - name: afterMessageId
+                  in: query
+                  schema:
+                    type: string
+                - name: afterDate
+                  in: query
+                  schema:
+                    type: string
+                - name: messagesPerRoom
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetMessageHistoryResponse'
+    /api/chat/v1/mark_as_read:
+        post:
+            tags:
+                - ChatService
+            description: "Marcar mensajes como leídos\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_MarkMessagesAsRead
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MarkMessagesAsReadRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MarkMessagesAsReadResponse'
+    /api/chat/v1/message/{id}:
+        get:
+            tags:
+                - ChatService
+            description: "Obtener mensaje\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_GetMessage
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MessageData'
+    /api/chat/v1/message/{id}/reactions:
+        get:
+            tags:
+                - ChatService
+            description: "Obtener mentions de un mensaje por usuario\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_GetMessageReactions
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetMessageReactionsResponse'
+    /api/chat/v1/message/{id}/read:
+        get:
+            tags:
+                - ChatService
+            description: "Obtener lecturas de un mensaje por usuario\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_GetMessageRead
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetMessageReadResponse'
+    /api/chat/v1/react:
+        post:
+            tags:
+                - ChatService
+            description: "Reaccionar a un mensaje\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_ReactToMessage
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ReactToMessageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ReactToMessageResponse'
+    /api/chat/v1/room/block:
+        post:
+            tags:
+                - ChatService
+            description: "Bloqueo de usuario\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_BlockUser
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/BlockUserRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BlockUserResponse'
+    /api/chat/v1/room/create:
+        post:
+            tags:
+                - ChatService
+            description: "Crear un nuevo room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_CreateRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateRoomRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CreateRoomResponse'
+    /api/chat/v1/room/leave:
+        post:
+            tags:
+                - ChatService
+            description: "Salir o sacar a alguien de un room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_LeaveRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LeaveRoomRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LeaveRoomResponse'
+    /api/chat/v1/room/list:
+        get:
+            tags:
+                - ChatService
+            description: "Obtener lista de rooms del usuario\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_GetRooms
+            parameters:
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: search
+                  in: query
+                  schema:
+                    type: string
+                - name: type
+                  in: query
+                  schema:
+                    type: string
+                - name: since
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetRoomsResponse'
+    /api/chat/v1/room/mute:
+        post:
+            tags:
+                - ChatService
+            description: "Mutear un room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_MuteRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MuteRoomRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MuteRoomResponse'
+    /api/chat/v1/room/participant/add:
+        post:
+            tags:
+                - ChatService
+            description: "Agregar un participante a un room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_AddParticipantToRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AddParticipantToRoomRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AddParticipantToRoomResponse'
+    /api/chat/v1/room/participant/update:
+        put:
+            tags:
+                - ChatService
+            description: "Modificar role\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_UpdateParticipantRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateParticipantRoomRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UpdateParticipantRoomResponse'
+    /api/chat/v1/room/pin:
+        post:
+            tags:
+                - ChatService
+            description: "Pinnear un room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_PinRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/PinRoomRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/PinRoomResponse'
+    /api/chat/v1/room/update:
+        put:
+            tags:
+                - ChatService
+            description: "Actualizar un room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_UpdateRoom
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateRoomRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UpdateRoomResponse'
+    /api/chat/v1/room/{id}:
+        get:
+            tags:
+                - ChatService
+            description: "Obtener un room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_GetRoom
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetRoomResponse'
+    /api/chat/v1/room/{id}/participants:
+        get:
+            tags:
+                - ChatService
+            description: "Obtener lista de participantes de un room\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_GetRoomParticipants
+            parameters:
+                - name: id
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+                - name: page
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: limit
+                  in: query
+                  schema:
+                    type: integer
+                    format: uint32
+                - name: search
+                  in: query
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetRoomParticipantsResponse'
+    /api/chat/v1/send:
+        post:
+            tags:
+                - ChatService
+            description: "Enviar mensaje\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_SendMessage
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SendMessageRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/SendMessageResponse'
+    /api/chat/v1/sender/message/{senderMessageId}:
+        get:
+            tags:
+                - ChatService
+            description: "Obtener mensaje por sender message\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_GetSenderMessage
+            parameters:
+                - name: senderMessageId
+                  in: path
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/GetSenderMessageResponse'
+    /api/chat/v1/sync:
+        post:
+            tags:
+                - ChatService
+            description: "Sincronización inicial completa\n \U0001F512 Need private token to access this endpoint"
+            operationId: ChatService_InitialSync
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/InitialSyncRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/InitialSyncResponse'
+components:
+    schemas:
+        AddParticipantToRoomRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                participants:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+        AddParticipantToRoomResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        BlockUserRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        BlockUserResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        CreateMention:
+            type: object
+            properties:
+                tag:
+                    type: string
+                user:
+                    type: string
+        CreateRoomRequest:
+            type: object
+            properties:
+                type:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                photoUrl:
+                    type: string
+                sendMessage:
+                    type: boolean
+                addMember:
+                    type: boolean
+                editGroup:
+                    type: boolean
+                participants:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+        CreateRoomResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+                room:
+                    $ref: '#/components/schemas/Room'
+        DeleteMessageRequest:
+            type: object
+            properties:
+                roomId:
+                    type: string
+                messageIds:
+                    type: array
+                    items:
+                        type: string
+        DeleteMessageResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        EditMessageRequest:
+            type: object
+            properties:
+                messageId:
+                    type: string
+                newContent:
+                    type: string
+        EditMessageResponse:
+            type: object
+            properties:
+                message:
+                    $ref: '#/components/schemas/MessageData'
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        GetMessageHistoryResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/MessageData'
+                meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        GetMessageReactionsResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Reaction'
+                meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        GetMessageReadResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/MessageUserRead'
+                meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        GetRoomParticipantsResponse:
+            type: object
+            properties:
+                participants:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RoomParticipant'
+                meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+        GetRoomResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+                room:
+                    $ref: '#/components/schemas/Room'
+        GetRoomsResponse:
+            type: object
+            properties:
+                items:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Room'
+                meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+            description: Response para obtener rooms
+        GetSenderMessageResponse:
+            type: object
+            properties:
+                status:
+                    type: integer
+                    format: enum
+        InitialSyncRequest:
+            type: object
+            properties:
+                lastSyncTimestamp:
+                    type: string
+                syncStrategy:
+                    type: integer
+                    format: enum
+                messagesPerRoom:
+                    type: integer
+                    format: int32
+                includeArchivedRooms:
+                    type: boolean
+            description: Request para sincronización inicial
+        InitialSyncResponse:
+            type: object
+            properties:
+                rooms:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Room'
+                roomsDeleted:
+                    type: array
+                    items:
+                        type: string
+                messages:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/MessageData'
+                syncTimestamp:
+                    type: string
+                summary:
+                    $ref: '#/components/schemas/SyncSummary'
+            description: Response para sincronización inicial
+        LeaveRoomRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                participants:
+                    type: array
+                    items:
+                        type: integer
+                        format: int32
+                leaveAll:
+                    type: boolean
+        LeaveRoomResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        MarkMessagesAsReadRequest:
+            type: object
+            properties:
+                roomId:
+                    type: string
+                messageIds:
+                    type: array
+                    items:
+                        type: string
+        MarkMessagesAsReadResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                markedCount:
+                    type: integer
+                    format: int32
+                errorMessage:
+                    type: string
+        Mention:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                tag:
+                    type: string
+                phone:
+                    type: string
+                messageId:
+                    type: string
+        MessageData:
+            type: object
+            properties:
+                id:
+                    type: string
+                roomId:
+                    type: string
+                senderId:
+                    type: integer
+                    format: int32
+                senderName:
+                    type: string
+                senderAvatar:
+                    type: string
+                senderPhone:
+                    type: string
+                content:
+                    type: string
+                reply:
+                    $ref: '#/components/schemas/MessageData'
+                forwardedMessageId:
+                    type: string
+                forwardedMessageSenderId:
+                    type: integer
+                    format: int32
+                forwardedMessageSenderName:
+                    type: string
+                forwardedMessageSenderAvatar:
+                    type: string
+                forwardedMessageSenderPhone:
+                    type: string
+                mentions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Mention'
+                status:
+                    type: integer
+                    format: enum
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                type:
+                    type: string
+                edited:
+                    type: boolean
+                isDeleted:
+                    type: boolean
+                audioTranscription:
+                    type: string
+                lifetime:
+                    type: string
+                locationName:
+                    type: string
+                locationLatitude:
+                    type: number
+                    format: double
+                locationLongitude:
+                    type: number
+                    format: double
+                origin:
+                    type: string
+                contactId:
+                    type: string
+                contactName:
+                    type: string
+                contactPhone:
+                    type: string
+                file:
+                    type: string
+                reactions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Reaction'
+                event:
+                    type: string
+                senderMessageId:
+                    type: string
+        MessageUserRead:
+            type: object
+            properties:
+                userId:
+                    type: integer
+                    format: int32
+                userName:
+                    type: string
+                userAvatar:
+                    type: string
+                userPhone:
+                    type: string
+                readAt:
+                    type: string
+        MuteRoomRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        MuteRoomResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        PaginationMeta:
+            type: object
+            properties:
+                totalItems:
+                    type: integer
+                    format: uint32
+                itemCount:
+                    type: integer
+                    format: uint32
+                itemsPerPage:
+                    type: integer
+                    format: uint32
+                totalPages:
+                    type: integer
+                    format: uint32
+                currentPage:
+                    type: integer
+                    format: uint32
+        PinRoomRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+        PinRoomResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        ReactToMessageRequest:
+            type: object
+            properties:
+                messageId:
+                    type: string
+                reaction:
+                    type: string
+        ReactToMessageResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        Reaction:
+            type: object
+            properties:
+                id:
+                    type: string
+                reaction:
+                    type: string
+                messageId:
+                    type: string
+                reactedById:
+                    type: string
+                reactedByName:
+                    type: string
+                reactedByAvatar:
+                    type: string
+                reactedByPhone:
+                    type: string
+        Room:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                photoUrl:
+                    type: string
+                encryptionData:
+                    type: string
+                type:
+                    type: string
+                unreadCount:
+                    type: integer
+                    format: int32
+                role:
+                    type: string
+                joinAllUser:
+                    type: boolean
+                lastMessageAt:
+                    type: string
+                sendMessage:
+                    type: boolean
+                addMember:
+                    type: boolean
+                editGroup:
+                    type: boolean
+                createdAt:
+                    type: string
+                updatedAt:
+                    type: string
+                partner:
+                    $ref: '#/components/schemas/RoomParticipant'
+                participants:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/RoomParticipant'
+                isPartnerBlocked:
+                    type: boolean
+                isMuted:
+                    type: boolean
+                isPinned:
+                    type: boolean
+                lastMessage:
+                    $ref: '#/components/schemas/MessageData'
+            description: Estructuras de datos principales
+        RoomParticipant:
+            type: object
+            properties:
+                id:
+                    type: integer
+                    format: int32
+                phone:
+                    type: string
+                name:
+                    type: string
+                avatar:
+                    type: string
+                role:
+                    type: string
+                isPartnerBlocked:
+                    type: boolean
+                isPartnerMuted:
+                    type: boolean
+        SendMessageRequest:
+            type: object
+            properties:
+                roomId:
+                    type: string
+                content:
+                    type: string
+                replyId:
+                    type: string
+                mentions:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/CreateMention'
+                type:
+                    type: string
+                lifetime:
+                    type: string
+                locationName:
+                    type: string
+                locationLatitude:
+                    type: number
+                    format: double
+                locationLongitude:
+                    type: number
+                    format: double
+                origin:
+                    type: string
+                contactName:
+                    type: string
+                contactPhone:
+                    type: string
+                file:
+                    type: string
+                forwardId:
+                    type: string
+                event:
+                    type: string
+                senderMessageId:
+                    type: string
+        SendMessageResponse:
+            type: object
+            properties:
+                message:
+                    $ref: '#/components/schemas/MessageData'
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        SyncSummary:
+            type: object
+            properties:
+                roomsSynced:
+                    type: integer
+                    format: int32
+                roomsDeleted:
+                    type: integer
+                    format: int32
+                messagesSynced:
+                    type: integer
+                    format: int32
+                syncDurationMs:
+                    type: string
+            description: Resumen de sincronización
+        UpdateParticipantRoomRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                participant:
+                    type: integer
+                    format: int32
+                role:
+                    type: string
+        UpdateParticipantRoomResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+        UpdateRoomRequest:
+            type: object
+            properties:
+                id:
+                    type: string
+                name:
+                    type: string
+                description:
+                    type: string
+                photoUrl:
+                    type: string
+                sendMessage:
+                    type: boolean
+                addMember:
+                    type: boolean
+                editGroup:
+                    type: boolean
+        UpdateRoomResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                errorMessage:
+                    type: string
+tags:
+    - name: ChatService

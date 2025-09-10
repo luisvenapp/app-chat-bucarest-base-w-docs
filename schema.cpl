@@ -1,0 +1,170 @@
+-- #############################################################################
+-- # Tablas Principales (Core)
+-- #############################################################################
+
+-- Tabla para almacenar los mensajes de cada sala.
+-- OPTIMIZADA PARA: `GetMessagesFromRoom` (leer el historial de un chat).
+CREATE TABLE messages_by_room (
+    room_id uuid,           -- Clave de Partición: Agrupa todos los mensajes de una sala juntos.
+    message_id timeuuid,    -- Clave de Clúster: Ordena los mensajes cronológicamente dentro de la sala.
+    sender_id int,
+    content text,
+    content_decrypted text, -- Para que coincida con la implementación de SQL
+    type text,
+    created_at timestamp,
+    edited boolean,
+    is_deleted boolean,     -- Usado para soft-delete.
+    reply_to_message_id timeuuid,
+    forwarded_from_message_id timeuuid,
+    file_url text,
+    event text,
+    sender_message_id text, -- ID opcional del cliente para idempotencia.
+    PRIMARY KEY ((room_id), message_id)
+) WITH CLUSTERING ORDER BY (message_id DESC);
+
+
+-- Tabla desnormalizada para la lista de salas de un usuario.
+-- OPTIMIZADA PARA: `GetRooms` (renderizar la pantalla principal de chats del usuario).
+CREATE TABLE rooms_by_user (
+    user_id int,            -- Clave de Partición: Agrupa todas las salas de un usuario.
+    is_pinned boolean,      -- Clave de Clúster 1: Pone las salas pineadas primero.
+    last_message_at timestamp, -- Clave de Clúster 2: Ordena por la actividad más reciente.
+    room_id uuid,           -- Clave de Clúster 3: Asegura la unicidad de la fila.
+    -- Datos desnormalizados para evitar lecturas adicionales
+    room_name text,
+    room_image text,
+    room_type text,
+    is_muted boolean,
+    role text,
+    -- Campos desnormalizados del último mensaje para construir el objeto completo
+    last_message_id timeuuid,
+    last_message_preview text,
+    last_message_type text,
+    last_message_sender_id int,
+    last_message_sender_name text,
+    last_message_sender_phone text,
+    last_message_status int,
+    last_message_updated_at timestamp,
+    PRIMARY KEY ((user_id), is_pinned, last_message_at, room_id)
+) WITH CLUSTERING ORDER BY (is_pinned DESC, last_message_at DESC, room_id DESC);
+
+
+-- Tabla dedicada exclusivamente para los contadores de no leídos.
+CREATE TABLE room_counters_by_user (
+    user_id int,            -- Clave de Partición
+    room_id uuid,           -- Clave de Clúster
+    unread_count counter,   -- El contador de mensajes no leídos
+    PRIMARY KEY ((user_id), room_id)
+);
+
+
+-- Tabla para almacenar los detalles estáticos de una sala.
+-- OPTIMIZADA PARA: `GetRoom` (obtener información que no cambia con cada mensaje).
+CREATE TABLE room_details (
+    room_id uuid PRIMARY KEY, -- Clave de Partición: Búsqueda directa por ID de sala.
+    name text,
+    description text,
+    image text,
+    type text,
+    encryption_data text,
+    created_at timestamp,
+    updated_at timestamp,
+    join_all_user boolean,
+    send_message boolean,
+    add_member boolean,
+    edit_group boolean
+);
+
+
+-- Tabla para almacenar los miembros de cada sala.
+-- OPTIMIZADA PARA: `GetRoomParticipants`, `IsPartnerMuted`.
+CREATE TABLE participants_by_room (
+    room_id uuid,           -- Clave de Partición: Agrupa a todos los miembros de una sala.
+    user_id int,            -- Clave de Clúster: Identifica unívocamente al miembro dentro de la sala.
+    role text,
+    joined_at timestamp,
+    is_muted boolean,       -- Para la lógica de mute del usuario en la sala
+    is_partner_blocked boolean, -- Para la lógica de bloqueo en chats p2p.
+    PRIMARY KEY ((room_id), user_id)
+);
+
+
+-- #############################################################################
+-- # Tablas de Metadatos y Búsqueda Inversa
+-- #############################################################################
+
+-- Tabla para buscar salas P2P existentes y evitar duplicados.
+CREATE TABLE p2p_room_by_users (
+    user1_id int, -- Clave de partición (siempre el ID menor)
+    user2_id int, -- Clave de clúster (siempre el ID mayor)
+    room_id uuid,
+    PRIMARY KEY ((user1_id), user2_id)
+);
+
+-- Tabla para las reacciones a un mensaje.
+-- OPTIMIZADA PARA: `GetMessageReactions`.
+CREATE TABLE reactions_by_message (
+    message_id timeuuid,    -- Clave de Partición: Agrupa todas las reacciones de un mensaje.
+    user_id int,            -- Clave de Clúster: Identifica qué usuario reaccionó.
+    reaction text,
+    created_at timestamp,
+    PRIMARY KEY ((message_id), user_id)
+);
+
+
+-- Tabla para los recibos de lectura de un mensaje.
+-- OPTIMIZADA PARA: `GetMessageRead`.
+CREATE TABLE read_receipts_by_message (
+    message_id timeuuid,    -- Clave de Partición: Agrupa todos los lectores de un mensaje.
+    user_id int,            -- Clave de Clúster: Identifica qué usuario leyó el mensaje.
+    read_at timestamp,
+    PRIMARY KEY ((message_id), user_id)
+);
+
+
+-- Tabla de búsqueda inversa para encontrar un mensaje por su ID de cliente.
+-- OPTIMIZADA PARA: `GetSenderMessage`.
+CREATE TABLE message_by_sender_message_id (
+    sender_message_id text PRIMARY KEY, -- Clave de Partición: Búsqueda directa por el ID del cliente.
+    room_id uuid,
+    message_id timeuuid
+);
+
+
+-- Tabla de búsqueda inversa para encontrar la sala de un mensaje por su ID.
+-- OPTIMIZADA PARA: `GetMessage`, `UpdateMessage`, `DeleteMessage`.
+CREATE TABLE room_by_message (
+    message_id timeuuid PRIMARY KEY, -- Clave de Partición: Búsqueda directa por el ID del mensaje.
+    room_id uuid
+);
+
+-- Tabla de búsqueda para encontrar la clave de clúster de un miembro en una sala.
+-- OPTIMIZADA PARA: Evitar `ALLOW FILTERING` al actualizar/eliminar de `rooms_by_user`.
+CREATE TABLE room_membership_lookup (
+    user_id int,
+    room_id uuid,
+    is_pinned boolean,
+    last_message_at timestamp,
+    PRIMARY KEY ((user_id), room_id)
+);
+
+-- Tabla para registrar eliminaciones de salas/miembros para sincronización.
+-- OPTIMIZADA PARA: `GetRoomListDeleted`.
+CREATE TABLE deleted_rooms_by_user (
+    user_id int,            -- Clave de Partición: Agrupa todas las eliminaciones para un usuario.
+    deleted_at timestamp,    -- Clave de Clúster 1: Ordena las eliminaciones cronológicamente.
+    room_id uuid,           -- Clave de Clúster 2: Asegura la unicidad.
+    reason text,            -- 'deleted' (sala eliminada) o 'removed' (usuario eliminado de la sala)
+    PRIMARY KEY ((user_id), deleted_at, room_id)
+) WITH CLUSTERING ORDER BY (deleted_at DESC);
+
+-- Tabla para rastrear el estado de cada mensaje para cada usuario.
+-- OPTIMIZADA PARA: Obtener el estado de un mensaje sin afectar a otros usuarios.
+CREATE TABLE message_status_by_user (
+    user_id int,
+    room_id uuid,
+    message_id timeuuid,
+    status int, -- 0:UNSPECIFIED, 1:SENDING, 2:SENT, 3:DELIVERED, 4:READ, 5:ERROR
+    PRIMARY KEY ((user_id, room_id), message_id)
+) WITH CLUSTERING ORDER BY (message_id DESC);
+
