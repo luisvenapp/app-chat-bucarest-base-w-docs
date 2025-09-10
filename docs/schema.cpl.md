@@ -1,63 +1,123 @@
-# 📄 Documentación: schema.cpl
+# Documentación Técnica: schema.cpl
 
-## 🎯 Propósito
-Schema de base de datos optimizado para ScyllaDB que implementa un modelo de datos desnormalizado para máximo rendimiento en operaciones de chat en tiempo real.
+## Descripción General
 
-## 🏗️ Arquitectura de Datos
+El archivo `schema.cpl` define el esquema de base de datos para Cassandra/ScyllaDB, optimizado específicamente para el sistema de chat de alto rendimiento. Implementa un diseño desnormalizado que prioriza la velocidad de lectura sobre la eficiencia de almacenamiento, utilizando patrones de modelado NoSQL para soportar millones de mensajes y usuarios concurrentes.
 
-### 📊 Principios de Diseño
-- **Query-First Design**: Tablas diseñadas por patrones de consulta
-- **Desnormalización**: Duplicación estratégica para performance
-- **Particionamiento**: Distribución eficiente de datos
-- **Ordenamiento**: Clustering keys para orden temporal
+## Filosofía de Diseño
 
-## 📋 Tablas Principales
+### Principios de Cassandra/ScyllaDB
 
-### 💬 `messages_by_room`
-```cql
+1. **Query-First Design**: Cada tabla está optimizada para consultas específicas
+2. **Desnormalización**: Datos duplicados para evitar JOINs costosos
+3. **Partition Key Strategy**: Distribución uniforme de datos
+4. **Clustering Keys**: Ordenamiento eficiente dentro de particiones
+5. **Write-Heavy Optimization**: Optimizado para alta escritura de mensajes
+
+## Tablas Principales (Core)
+
+### Tabla messages_by_room
+
+```sql
 CREATE TABLE messages_by_room (
-    room_id uuid,           -- Partition Key
-    message_id timeuuid,    -- Clustering Key
+    room_id uuid,           -- Clave de Partición: Agrupa todos los mensajes de una sala juntos.
+    message_id timeuuid,    -- Clave de Clúster: Ordena los mensajes cronológicamente dentro de la sala.
     sender_id int,
     content text,
-    content_decrypted text,
+    content_decrypted text, -- Para que coincida con la implementación de SQL
     type text,
     created_at timestamp,
     edited boolean,
-    is_deleted boolean,
+    is_deleted boolean,     -- Usado para soft-delete.
     reply_to_message_id timeuuid,
     forwarded_from_message_id timeuuid,
     file_url text,
     event text,
-    sender_message_id text,
+    sender_message_id text, -- ID opcional del cliente para idempotencia.
     PRIMARY KEY ((room_id), message_id)
 ) WITH CLUSTERING ORDER BY (message_id DESC);
 ```
 
-#### 🎯 Optimizada Para
-- **GetMessagesFromRoom**: Historial de chat por sala
-- **Ordenamiento temporal**: Mensajes más recientes primero
-- **Paginación eficiente**: Con timeuuid como cursor
+**Análisis Detallado:**
 
-#### 🔑 Claves de Diseño
-- **Partition Key**: `room_id` agrupa todos los mensajes de una sala
-- **Clustering Key**: `timeuuid` garantiza orden cronológico único
-- **Soft Delete**: Campo `is_deleted` para eliminación lógica
+#### Estrategia de Particionado
+```sql
+PRIMARY KEY ((room_id), message_id)
+```
 
-### 🏠 `rooms_by_user`
-```cql
+**Partition Key: `room_id`**
+- **Propósito**: Agrupa todos los mensajes de una sala en la misma partición
+- **Ventaja**: Consultas de historial de chat extremadamente rápidas
+- **Distribución**: Cada sala es una partición independiente
+- **Escalabilidad**: Distribución natural por número de salas
+
+**Clustering Key: `message_id timeuuid`**
+- **Tipo**: `timeuuid` combina timestamp + UUID
+- **Ordenamiento**: `DESC` para mostrar mensajes más recientes primero
+- **Ventaja**: Ordenamiento automático por tiempo de creación
+- **Unicidad**: Garantiza unicidad incluso con alta concurrencia
+
+#### Campos de Mensaje
+
+##### Campos Básicos
+```sql
+sender_id int,              -- ID del usuario que envía
+content text,               -- Contenido encriptado del mensaje
+content_decrypted text,     -- Contenido desencriptado para búsqueda
+type text,                  -- Tipo: "user_message", "system", "file", etc.
+created_at timestamp,       -- Timestamp de creación
+```
+
+##### Campos de Estado
+```sql
+edited boolean,             -- Indica si el mensaje fue editado
+is_deleted boolean,         -- Soft delete para mantener historial
+```
+
+##### Campos de Relación
+```sql
+reply_to_message_id timeuuid,        -- Respuesta a otro mensaje
+forwarded_from_message_id timeuuid,  -- Mensaje reenviado
+```
+
+##### Campos Multimedia
+```sql
+file_url text,              -- URL de archivo adjunto
+event text,                 -- Datos de evento (JSON)
+sender_message_id text,     -- ID del cliente para idempotencia
+```
+
+#### Optimización de Consultas
+
+**Query Principal: Historial de Chat**
+```sql
+SELECT * FROM messages_by_room 
+WHERE room_id = ? 
+ORDER BY message_id DESC 
+LIMIT 50;
+```
+
+**Características:**
+- **O(1) lookup**: Acceso directo por partition key
+- **Ordenamiento automático**: Sin necesidad de ORDER BY costoso
+- **Paginación eficiente**: LIMIT + token de continuación
+- **Cache-friendly**: Datos contiguos en disco
+
+### Tabla rooms_by_user
+
+```sql
 CREATE TABLE rooms_by_user (
-    user_id int,            -- Partition Key
-    is_pinned boolean,      -- Clustering Key 1
-    last_message_at timestamp, -- Clustering Key 2
-    room_id uuid,           -- Clustering Key 3
-    -- Datos desnormalizados
+    user_id int,            -- Clave de Partición: Agrupa todas las salas de un usuario.
+    is_pinned boolean,      -- Clave de Clúster 1: Pone las salas pineadas primero.
+    last_message_at timestamp, -- Clave de Clúster 2: Ordena por la actividad más reciente.
+    room_id uuid,           -- Clave de Clúster 3: Asegura la unicidad de la fila.
+    -- Datos desnormalizados para evitar lecturas adicionales
     room_name text,
     room_image text,
     room_type text,
     is_muted boolean,
     role text,
-    -- Último mensaje desnormalizado
+    -- Campos desnormalizados del último mensaje para construir el objeto completo
     last_message_id timeuuid,
     last_message_preview text,
     last_message_type text,
@@ -70,35 +130,116 @@ CREATE TABLE rooms_by_user (
 ) WITH CLUSTERING ORDER BY (is_pinned DESC, last_message_at DESC, room_id DESC);
 ```
 
-#### 🎯 Optimizada Para
-- **GetRooms**: Lista de chats del usuario
-- **Ordenamiento**: Salas fijadas primero, luego por actividad
-- **Datos completos**: Sin necesidad de JOINs adicionales
+**Análisis de Diseño:**
 
-#### 🔑 Claves de Diseño
-- **Desnormalización**: Último mensaje incluido para UI
-- **Ordenamiento**: Pinned → Actividad → ID para consistencia
-- **Fan-out**: Actualización manual en cada mensaje nuevo
+#### Estrategia de Clustering Compleja
+```sql
+PRIMARY KEY ((user_id), is_pinned, last_message_at, room_id)
+WITH CLUSTERING ORDER BY (is_pinned DESC, last_message_at DESC, room_id DESC)
+```
 
-### 📊 `room_counters_by_user`
-```cql
+**Clustering Key Compuesta:**
+1. **`is_pinned DESC`**: Salas fijadas aparecen primero
+2. **`last_message_at DESC`**: Ordenamiento por actividad reciente
+3. **`room_id DESC`**: Desempate para unicidad
+
+**Resultado del Ordenamiento:**
+```
+1. Salas pinned, ordenadas por último mensaje
+2. Salas no pinned, ordenadas por último mensaje
+```
+
+#### Desnormalización Agresiva
+
+**Datos de Sala:**
+```sql
+room_name text,             -- Nombre de la sala
+room_image text,            -- Avatar/imagen de la sala
+room_type text,             -- "p2p" o "group"
+is_muted boolean,           -- Estado de notificaciones
+role text,                  -- Rol del usuario en la sala
+```
+
+**Datos del Último Mensaje:**
+```sql
+last_message_id timeuuid,           -- ID del último mensaje
+last_message_preview text,          -- Preview del contenido
+last_message_type text,             -- Tipo de mensaje
+last_message_sender_id int,         -- ID del remitente
+last_message_sender_name text,      -- Nombre del remitente
+last_message_sender_phone text,     -- Teléfono del remitente
+last_message_status int,            -- Estado del mensaje
+last_message_updated_at timestamp,  -- Última actualización
+```
+
+**Ventajas de la Desnormalización:**
+- **Una sola consulta**: Lista completa de chats en una query
+- **Sin JOINs**: Evita consultas adicionales costosas
+- **UI responsiva**: Datos completos para renderizar inmediatamente
+- **Menos latencia**: Reducción significativa de round-trips
+
+#### Query Optimizada
+
+**Consulta Principal: Lista de Chats**
+```sql
+SELECT * FROM rooms_by_user 
+WHERE user_id = ? 
+ORDER BY is_pinned DESC, last_message_at DESC 
+LIMIT 20;
+```
+
+### Tabla room_counters_by_user
+
+```sql
 CREATE TABLE room_counters_by_user (
-    user_id int,            -- Partition Key
-    room_id uuid,           -- Clustering Key
-    unread_count counter,   -- Contador distribuido
+    user_id int,            -- Clave de Partición
+    room_id uuid,           -- Clave de Clúster
+    unread_count counter,   -- El contador de mensajes no leídos
     PRIMARY KEY ((user_id), room_id)
 );
 ```
 
-#### 🎯 Optimizada Para
-- **Contadores de no leídos**: Operaciones atómicas
-- **Performance**: Sin locks ni transacciones
-- **Escalabilidad**: Contadores distribuidos
+**Análisis de Contadores:**
 
-### 🏢 `room_details`
-```cql
+#### Tipo Counter
+```sql
+unread_count counter,
+```
+
+**Características de Counters en Cassandra:**
+- **Operaciones atómicas**: Increment/decrement thread-safe
+- **Distributed**: Funciona en clusters distribuidos
+- **Eventually consistent**: Consistencia eventual
+- **Performance**: Operaciones muy rápidas
+
+#### Operaciones Típicas
+
+**Incrementar contador:**
+```sql
+UPDATE room_counters_by_user 
+SET unread_count = unread_count + 1 
+WHERE user_id = ? AND room_id = ?;
+```
+
+**Resetear contador:**
+```sql
+UPDATE room_counters_by_user 
+SET unread_count = 0 
+WHERE user_id = ? AND room_id = ?;
+```
+
+**Consultar contadores:**
+```sql
+SELECT room_id, unread_count 
+FROM room_counters_by_user 
+WHERE user_id = ?;
+```
+
+### Tabla room_details
+
+```sql
 CREATE TABLE room_details (
-    room_id uuid PRIMARY KEY,
+    room_id uuid PRIMARY KEY, -- Clave de Partición: Búsqueda directa por ID de sala.
     name text,
     description text,
     image text,
@@ -113,47 +254,206 @@ CREATE TABLE room_details (
 );
 ```
 
-#### 🎯 Optimizada Para
-- **GetRoom**: Información estática de la sala
-- **Configuración**: Permisos y metadatos
-- **Encriptación**: Datos de claves por sala
+**Análisis:**
 
-### 👥 `participants_by_room`
-```cql
+#### Partition Key Simple
+```sql
+room_id uuid PRIMARY KEY
+```
+- **Acceso directo**: Lookup O(1) por ID de sala
+- **Distribución**: UUIDs distribuyen uniformemente
+- **Uso**: Consultas de detalles específicos de sala
+
+#### Campos de Configuración
+```sql
+join_all_user boolean,      -- Cualquiera puede unirse
+send_message boolean,       -- Permisos de envío
+add_member boolean,         -- Permisos de agregar miembros
+edit_group boolean,         -- Permisos de edición
+```
+
+#### Datos de Encriptación
+```sql
+encryption_data text,       -- Claves de encriptación de la sala
+```
+- **Seguridad**: Claves específicas por sala
+- **Formato**: JSON encriptado con clave maestra
+- **Acceso**: Solo miembros autorizados
+
+### Tabla participants_by_room
+
+```sql
 CREATE TABLE participants_by_room (
-    room_id uuid,           -- Partition Key
-    user_id int,            -- Clustering Key
+    room_id uuid,           -- Clave de Partición: Agrupa a todos los miembros de una sala.
+    user_id int,            -- Clave de Clúster: Identifica unívocamente al miembro dentro de la sala.
     role text,
     joined_at timestamp,
-    is_muted boolean,
-    is_partner_blocked boolean,
+    is_muted boolean,       -- Para la lógica de mute del usuario en la sala
+    is_partner_blocked boolean, -- Para la lógica de bloqueo en chats p2p.
     PRIMARY KEY ((room_id), user_id)
 );
 ```
 
-#### 🎯 Optimizada Para
-- **GetRoomParticipants**: Lista de miembros
-- **Permisos**: Roles y estados por usuario
-- **Moderación**: Mute y bloqueo
+**Análisis:**
 
-## 🔍 Tablas de Lookup
+#### Estrategia de Particionado
+- **Partition Key**: `room_id` agrupa todos los miembros
+- **Clustering Key**: `user_id` para acceso directo a miembro específico
 
-### 🔗 `p2p_room_by_users`
-```cql
+#### Campos de Estado
+```sql
+role text,                      -- "OWNER", "ADMIN", "MEMBER"
+joined_at timestamp,            -- Timestamp de unión
+is_muted boolean,               -- Estado de notificaciones
+is_partner_blocked boolean,     -- Bloqueo en chats P2P
+```
+
+#### Consultas Optimizadas
+
+**Listar miembros de sala:**
+```sql
+SELECT * FROM participants_by_room 
+WHERE room_id = ?;
+```
+
+**Verificar membresía:**
+```sql
+SELECT role FROM participants_by_room 
+WHERE room_id = ? AND user_id = ?;
+```
+
+## Tablas de Metadatos y Búsqueda Inversa
+
+### Tabla p2p_room_by_users
+
+```sql
 CREATE TABLE p2p_room_by_users (
-    user1_id int,           -- Partition Key (menor ID)
-    user2_id int,           -- Clustering Key (mayor ID)
+    user1_id int, -- Clave de partición (siempre el ID menor)
+    user2_id int, -- Clave de clúster (siempre el ID mayor)
     room_id uuid,
     PRIMARY KEY ((user1_id), user2_id)
 );
 ```
 
-#### 🎯 Propósito
-- **Anti-duplicados**: Evita múltiples salas P2P entre mismos usuarios
-- **Búsqueda eficiente**: Lookup directo por par de usuarios
+**Análisis:**
 
-### 🔄 `room_membership_lookup`
-```cql
+#### Prevención de Duplicados
+- **Ordenamiento**: `user1_id` siempre menor que `user2_id`
+- **Unicidad**: Garantiza una sola sala P2P por par de usuarios
+- **Búsqueda**: Lookup eficiente de sala existente
+
+#### Uso en Aplicación
+```go
+func findP2PRoom(userA, userB int) uuid.UUID {
+    user1, user2 := sortUserIDs(userA, userB)
+    // SELECT room_id FROM p2p_room_by_users 
+    // WHERE user1_id = ? AND user2_id = ?
+}
+```
+
+### Tabla reactions_by_message
+
+```sql
+CREATE TABLE reactions_by_message (
+    message_id timeuuid,    -- Clave de Partición: Agrupa todas las reacciones de un mensaje.
+    user_id int,            -- Clave de Clúster: Identifica qué usuario reaccionó.
+    reaction text,
+    created_at timestamp,
+    PRIMARY KEY ((message_id), user_id)
+);
+```
+
+**Análisis:**
+
+#### Agrupación por Mensaje
+- **Partition Key**: `message_id` agrupa todas las reacciones
+- **Clustering Key**: `user_id` para una reacción por usuario
+- **Limitación**: Un usuario solo puede tener una reacción por mensaje
+
+#### Consultas Típicas
+
+**Obtener reacciones de mensaje:**
+```sql
+SELECT user_id, reaction, created_at 
+FROM reactions_by_message 
+WHERE message_id = ?;
+```
+
+**Agregar/actualizar reacción:**
+```sql
+INSERT INTO reactions_by_message 
+(message_id, user_id, reaction, created_at) 
+VALUES (?, ?, ?, ?);
+```
+
+### Tabla read_receipts_by_message
+
+```sql
+CREATE TABLE read_receipts_by_message (
+    message_id timeuuid,    -- Clave de Partición: Agrupa todos los lectores de un mensaje.
+    user_id int,            -- Clave de Clúster: Identifica qué usuario leyó el mensaje.
+    read_at timestamp,
+    PRIMARY KEY ((message_id), user_id)
+);
+```
+
+**Análisis:**
+
+#### Tracking de Lectura
+- **Granularidad**: Por mensaje individual
+- **Usuarios**: Todos los que leyeron el mensaje
+- **Timestamp**: Momento exacto de lectura
+
+#### Consultas de "Visto por"
+
+**Obtener lectores:**
+```sql
+SELECT user_id, read_at 
+FROM read_receipts_by_message 
+WHERE message_id = ?;
+```
+
+**Marcar como leído:**
+```sql
+INSERT INTO read_receipts_by_message 
+(message_id, user_id, read_at) 
+VALUES (?, ?, ?);
+```
+
+## Tablas de Búsqueda Inversa
+
+### Tabla message_by_sender_message_id
+
+```sql
+CREATE TABLE message_by_sender_message_id (
+    sender_message_id text PRIMARY KEY, -- Clave de Partición: Búsqueda directa por el ID del cliente.
+    room_id uuid,
+    message_id timeuuid
+);
+```
+
+**Propósito:**
+- **Idempotencia**: Evitar mensajes duplicados del cliente
+- **Lookup**: Encontrar mensaje por ID del cliente
+- **Deduplicación**: Prevenir reenvíos accidentales
+
+### Tabla room_by_message
+
+```sql
+CREATE TABLE room_by_message (
+    message_id timeuuid PRIMARY KEY, -- Clave de Partición: Búsqueda directa por el ID del mensaje.
+    room_id uuid
+);
+```
+
+**Propósito:**
+- **Lookup inverso**: Encontrar sala de un mensaje
+- **Operaciones**: Editar, eliminar, reaccionar a mensaje
+- **Autorización**: Verificar permisos de sala
+
+### Tabla room_membership_lookup
+
+```sql
 CREATE TABLE room_membership_lookup (
     user_id int,
     room_id uuid,
@@ -163,56 +463,44 @@ CREATE TABLE room_membership_lookup (
 );
 ```
 
-#### 🎯 Propósito
-- **Evitar ALLOW FILTERING**: Lookup de claves de clustering
-- **Operaciones de actualización**: Pin/unpin, mute/unmute
+**Propósito:**
+- **Evitar ALLOW FILTERING**: Operaciones eficientes en `rooms_by_user`
+- **Metadata**: Información para actualizar clustering keys
+- **Performance**: Evita scans costosos
 
-### 📨 `room_by_message`
-```cql
-CREATE TABLE room_by_message (
-    message_id timeuuid PRIMARY KEY,
-    room_id uuid
-);
+## Tablas de Gestión
+
+### Tabla deleted_rooms_by_user
+
+```sql
+CREATE TABLE deleted_rooms_by_user (
+    user_id int,            -- Clave de Partición: Agrupa todas las eliminaciones para un usuario.
+    deleted_at timestamp,    -- Clave de Clúster 1: Ordena las eliminaciones cronológicamente.
+    room_id uuid,           -- Clave de Clúster 2: Asegura la unicidad.
+    reason text,            -- 'deleted' (sala eliminada) o 'removed' (usuario eliminado de la sala)
+    PRIMARY KEY ((user_id), deleted_at, room_id)
+) WITH CLUSTERING ORDER BY (deleted_at DESC);
 ```
 
-#### 🎯 Propósito
-- **Búsqueda inversa**: Encontrar sala por mensaje
-- **Operaciones**: Edit, delete, react por message_id
+**Análisis:**
 
-## 📈 Tablas de Metadatos
+#### Sincronización de Eliminaciones
+- **Propósito**: Tracking de salas eliminadas para sincronización
+- **Ordenamiento**: Por timestamp descendente
+- **Razones**: Diferencia entre eliminación y remoción
 
-### 🎭 `reactions_by_message`
-```cql
-CREATE TABLE reactions_by_message (
-    message_id timeuuid,    -- Partition Key
-    user_id int,            -- Clustering Key
-    reaction text,
-    created_at timestamp,
-    PRIMARY KEY ((message_id), user_id)
-);
+#### Consultas de Sincronización
+
+**Obtener eliminaciones desde timestamp:**
+```sql
+SELECT room_id, reason, deleted_at 
+FROM deleted_rooms_by_user 
+WHERE user_id = ? AND deleted_at > ?;
 ```
 
-### 👁️ `read_receipts_by_message`
-```cql
-CREATE TABLE read_receipts_by_message (
-    message_id timeuuid,    -- Partition Key
-    user_id int,            -- Clustering Key
-    read_at timestamp,
-    PRIMARY KEY ((message_id), user_id)
-);
-```
+### Tabla message_status_by_user
 
-### 🔍 `message_by_sender_message_id`
-```cql
-CREATE TABLE message_by_sender_message_id (
-    sender_message_id text PRIMARY KEY,
-    room_id uuid,
-    message_id timeuuid
-);
-```
-
-### 📊 `message_status_by_user`
-```cql
+```sql
 CREATE TABLE message_status_by_user (
     user_id int,
     room_id uuid,
@@ -222,98 +510,98 @@ CREATE TABLE message_status_by_user (
 ) WITH CLUSTERING ORDER BY (message_id DESC);
 ```
 
-### 🗑️ `deleted_rooms_by_user`
-```cql
-CREATE TABLE deleted_rooms_by_user (
-    user_id int,            -- Partition Key
-    deleted_at timestamp,   -- Clustering Key 1
-    room_id uuid,           -- Clustering Key 2
-    reason text,            -- 'deleted' o 'removed'
-    PRIMARY KEY ((user_id), deleted_at, room_id)
-) WITH CLUSTERING ORDER BY (deleted_at DESC);
+**Análisis:**
+
+#### Partition Key Compuesta
+```sql
+PRIMARY KEY ((user_id, room_id), message_id)
+```
+- **Distribución**: Por usuario y sala
+- **Agrupación**: Estados de mensajes por contexto
+- **Escalabilidad**: Distribución uniforme
+
+#### Estados de Mensaje
+```
+0: UNSPECIFIED - Estado inicial
+1: SENDING     - Enviando
+2: SENT        - Enviado al servidor
+3: DELIVERED   - Entregado al destinatario
+4: READ        - Leído por el destinatario
+5: ERROR       - Error en envío
 ```
 
-## 🎯 Patrones de Consulta Optimizados
+## Patrones de Consulta Optimizados
 
-### 📱 Pantalla Principal de Chat
-```cql
--- Una sola query para lista completa
-SELECT * FROM rooms_by_user WHERE user_id = ?;
-```
-
-### 💬 Historial de Mensajes
-```cql
--- Paginación eficiente con timeuuid
+### 1. Historial de Chat
+```sql
+-- Obtener últimos 50 mensajes de una sala
 SELECT * FROM messages_by_room 
-WHERE room_id = ? AND message_id < ? 
+WHERE room_id = ? 
+ORDER BY message_id DESC 
+LIMIT 50;
+
+-- Paginación con token
+SELECT * FROM messages_by_room 
+WHERE room_id = ? AND message_id < ?
+ORDER BY message_id DESC 
 LIMIT 50;
 ```
 
-### 🔢 Contadores No Leídos
-```cql
--- Operación atómica
+### 2. Lista de Chats del Usuario
+```sql
+-- Obtener lista de chats ordenada
+SELECT * FROM rooms_by_user 
+WHERE user_id = ? 
+ORDER BY is_pinned DESC, last_message_at DESC 
+LIMIT 20;
+```
+
+### 3. Contadores de No Leídos
+```sql
+-- Obtener todos los contadores
+SELECT room_id, unread_count 
+FROM room_counters_by_user 
+WHERE user_id = ?;
+
+-- Incrementar contador
 UPDATE room_counters_by_user 
 SET unread_count = unread_count + 1 
 WHERE user_id = ? AND room_id = ?;
 ```
 
-## 🚀 Optimizaciones de Performance
+### 4. Verificación de Membresía
+```sql
+-- Verificar si usuario es miembro
+SELECT role FROM participants_by_room 
+WHERE room_id = ? AND user_id = ?;
+```
 
-### Particionamiento
-- **Hot Partitions**: Evitadas con distribución por user_id
-- **Partition Size**: Controlado con TTL y archivado
-- **Load Balancing**: Distribución automática
+## Consideraciones de Performance
 
-### Clustering
-- **Ordenamiento**: Temporal descendente para recientes primero
-- **Rango de Consultas**: Eficientes con clustering keys
-- **Paginación**: Sin OFFSET, usando tokens
+### 1. **Distribución de Datos**
+- **Partition Keys**: Distribuyen uniformemente la carga
+- **Hot Partitions**: Evitadas mediante UUIDs y distribución por usuario
+- **Replication Factor**: Configurado para alta disponibilidad
 
-### Desnormalización
-- **Fan-out Writes**: Actualización de múltiples vistas
-- **Read Performance**: Datos completos en una query
-- **Consistency**: Eventual con reconciliación
+### 2. **Compactación**
+- **Size-Tiered**: Para tablas con muchas escrituras
+- **Leveled**: Para tablas con muchas lecturas
+- **TTL**: Para datos temporales
 
-## 📊 Consideraciones de Escalabilidad
+### 3. **Consistency Levels**
+- **Writes**: QUORUM para consistencia
+- **Reads**: LOCAL_QUORUM para performance
+- **Counters**: QUORUM para precisión
 
-### Crecimiento de Datos
-- **Retention**: TTL automático para datos antiguos
-- **Archivado**: Migración a cold storage
-- **Compactación**: Estrategias optimizadas
+## Mejores Prácticas Implementadas
 
-### Throughput
-- **Write Heavy**: Optimizado para alta escritura
-- **Read Patterns**: Cacheable y predecible
-- **Batch Operations**: Para operaciones relacionadas
+1. **Query-First Design**: Cada tabla optimizada para consultas específicas
+2. **Desnormalización**: Datos duplicados para evitar JOINs
+3. **Partition Strategy**: Distribución uniforme de datos
+4. **Clustering Optimization**: Ordenamiento eficiente
+5. **Counter Usage**: Para métricas que requieren atomicidad
+6. **Lookup Tables**: Para búsquedas inversas eficientes
+7. **Soft Deletes**: Preservación de historial
+8. **Idempotency**: Prevención de duplicados
 
-## 🔧 Configuraciones Recomendadas
-
-### Consistency Levels
-- **Writes**: LOCAL_QUORUM para durabilidad
-- **Reads**: LOCAL_QUORUM para consistencia
-- **Counters**: LOCAL_QUORUM siempre
-
-### Compaction
-- **Strategy**: Size-tiered para write-heavy
-- **Tombstone**: GC agresivo para deletes
-- **Bloom Filters**: Optimizados para reads
-
-## 💡 Mejores Prácticas Implementadas
-
-### ✅ Diseño
-- Query-first modeling
-- Evitar ALLOW FILTERING
-- Particiones balanceadas
-- Clustering eficiente
-
-### ✅ Performance
-- Desnormalización estratégica
-- Contadores distribuidos
-- Batches optimizados
-- TTL para limpieza
-
-### ✅ Mantenibilidad
-- Naming conventions claras
-- Comentarios descriptivos
-- Versionado de schema
-- Migración planificada
+Este esquema representa un diseño maduro y optimizado para un sistema de chat de alta escala, aprovechando las fortalezas de Cassandra/ScyllaDB para proporcionar latencia baja y alta disponibilidad.
