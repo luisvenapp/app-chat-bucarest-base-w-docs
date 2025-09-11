@@ -1281,7 +1281,7 @@ func (r *SQLRoomRepository) SaveMessage(ctx context.Context, userId int, req *ch
 	}
 	defer tx.Rollback()
 
-	var contactId sql.NullString
+	var contactId sql.NullInt32
 	if req.Type == "contact" && req.ContactPhone != nil {
 		// This query can be run inside the transaction
 		err := tx.QueryRowContext(ctx, "SELECT id FROM public.\"user\" WHERE phone = $1 AND removed_at IS NULL AND deleted_at IS NULL LIMIT 1", req.ContactPhone).Scan(&contactId)
@@ -1290,7 +1290,7 @@ func (r *SQLRoomRepository) SaveMessage(ctx context.Context, userId int, req *ch
 		}
 	}
 
-	var forwardUserId sql.NullString
+	var forwardUserId sql.NullInt32
 	if req.ForwardId != nil {
 		err := tx.QueryRowContext(ctx, "SELECT sender_id FROM room_message WHERE id = $1 AND deleted_at IS NULL LIMIT 1", req.ForwardId).Scan(&forwardUserId)
 		if err != nil && err != sql.ErrNoRows {

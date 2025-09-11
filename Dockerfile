@@ -50,7 +50,8 @@ FROM alpine:3.20 AS runner
 
 # Instala solo los paquetes absolutamente necesarios para la ejecución.
 # ca-certificates es esencial para hacer llamadas HTTPS desde tu aplicación.
-RUN apk add --no-cache ca-certificates tzdata curl
+# nss y suports hacen falta para conexiones TLS a NATS/PG en algunos entornos
+RUN apk add --no-cache ca-certificates tzdata curl nss bash bind-tools
 
 WORKDIR /app
 
